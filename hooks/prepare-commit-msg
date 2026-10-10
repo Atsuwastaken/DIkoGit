@@ -1,0 +1,9 @@
+#!/bin/sh
+# Dikogits prepare-commit-msg hook for macOS
+# Updates commit message file ($1) with pre-commit generated summary
+
+if command -v git-dikogits >/dev/null 2>&1; then
+    git-dikogits hook prepare-commit-msg "$1" "$2" "$3"
+elif [ -f "$(dirname "$0")/../../bin/git-dikogits" ]; then
+    "$(dirname "$0")/../../bin/git-dikogits" hook prepare-commit-msg "$1" "$2" "$3"
+fi

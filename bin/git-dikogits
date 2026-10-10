@@ -1,0 +1,474 @@
+#!/usr/bin/env python3
+"""
+Dikogits - Git Extension for Automatic Commit Summaries on macOS
+"""
+
+import sys
+import os
+import subprocess
+import argparse
+import re
+import pathlib
+import json
+
+VERSION = "1.0.0"
+
+class DikogitsEngine:
+    def __init__(self, repo_root=None):
+        self.repo_root = repo_root or self._get_repo_root()
+
+    def _get_repo_root(self):
+        try:
+            res = subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True
+            )
+            return res.stdout.strip()
+        except subprocess.CalledProcessError:
+            return None
+
+    def get_git_dir(self):
+        if not self.repo_root:
+            return None
+        try:
+            res = subprocess.run(
+                ["git", "rev-parse", "--git-dir"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                cwd=self.repo_root
+            )
+            git_dir = res.stdout.strip()
+            if not os.path.isabs(git_dir):
+                git_dir = os.path.normpath(os.path.join(self.repo_root, git_dir))
+            return git_dir
+        except subprocess.CalledProcessError:
+            return None
+
+    def get_staged_diff(self):
+        try:
+            res = subprocess.run(
+                ["git", "diff", "--cached"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                cwd=self.repo_root
+            )
+            return res.stdout
+        except subprocess.CalledProcessError:
+            return ""
+
+    def get_staged_numstat(self):
+        try:
+            res = subprocess.run(
+                ["git", "diff", "--cached", "--numstat"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                cwd=self.repo_root
+            )
+            return res.stdout.strip()
+        except subprocess.CalledProcessError:
+            return ""
+
+    def get_staged_name_status(self):
+        try:
+            res = subprocess.run(
+                ["git", "diff", "--cached", "--name-status"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                cwd=self.repo_root
+            )
+            return res.stdout.strip()
+        except subprocess.CalledProcessError:
+            return ""
+
+    def parse_changes(self):
+        name_status = self.get_staged_name_status()
+        numstat = self.get_staged_numstat()
+        diff_text = self.get_staged_diff()
+
+        files_changed = []
+        additions_total = 0
+        deletions_total = 0
+
+        # Parse numstat
+        numstat_map = {}
+        for line in numstat.splitlines():
+            parts = line.split('\t')
+            if len(parts) >= 3:
+                adds = int(parts[0]) if parts[0].isdigit() else 0
+                dels = int(parts[1]) if parts[1].isdigit() else 0
+                filepath = parts[2]
+                numstat_map[filepath] = (adds, dels)
+                additions_total += adds
+                deletions_total += dels
+
+        # Parse name-status
+        for line in name_status.splitlines():
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                status_code = parts[0][0]  # M, A, D, R, C
+                filepath = parts[-1]
+                orig_filepath = parts[1] if len(parts) > 2 else filepath
+                adds, dels = numstat_map.get(filepath, (0, 0))
+
+                status_name = {
+                    'A': 'added',
+                    'M': 'modified',
+                    'D': 'deleted',
+                    'R': 'renamed',
+                    'C': 'copied'
+                }.get(status_code, 'changed')
+
+                files_changed.append({
+                    'status': status_name,
+                    'code': status_code,
+                    'path': filepath,
+                    'orig_path': orig_filepath,
+                    'additions': adds,
+                    'deletions': dels
+                })
+
+        # Detect functional details from diff
+        details = self._extract_diff_details(diff_text)
+
+        return {
+            'files': files_changed,
+            'additions': additions_total,
+            'deletions': deletions_total,
+            'details': details
+        }
+
+    def _extract_diff_details(self, diff_text):
+        details = []
+        current_file = None
+        
+        for line in diff_text.splitlines():
+            if line.startswith('diff --git'):
+                match = re.search(r'b/(.+)$', line)
+                if match:
+                    current_file = match.group(1)
+            elif line.startswith('+') and not line.startswith('+++'):
+                content = line[1:].strip()
+                # Look for function/class definitions or key constructs across languages
+                if re.match(r'^(def |class |func |function |async def |export |pub fn |interface |type |const |let |var )', content):
+                    details.append(f"Defined `{content[:60]}`")
+                elif re.match(r'^(import |from |require\(|#include|use )', content):
+                    details.append(f"Added import: `{content[:60]}`")
+                elif content.startswith('#') and len(content) < 80:
+                    details.append(f"Added section: `{content}`")
+        
+        # Deduplicate and limit
+        seen = set()
+        unique_details = []
+        for d in details:
+            if d not in seen:
+                seen.add(d)
+                unique_details.append(d)
+        return unique_details[:5]
+
+    def determine_commit_type(self, changes):
+        files = changes['files']
+        if not files:
+            return "chore"
+
+        paths = [f['path'].lower() for f in files]
+        statuses = [f['status'] for f in files]
+
+        # Test files
+        if all('test' in p or 'spec' in p or p.startswith('tests/') for p in paths):
+            return "test"
+
+        # Documentation
+        if all(p.endswith(('.md', '.rst', '.txt')) or 'docs/' in p or 'readme' in p for p in paths):
+            return "docs"
+
+        # CI / Config
+        if all(p.endswith(('.yml', '.yaml', '.json', '.toml', '.ini')) or '.github/' in p or 'docker' in p for p in paths):
+            return "chore"
+
+        # Fix indicators in path or changes
+        diff_text = self.get_staged_diff().lower()
+        if 'fix' in diff_text or 'bug' in diff_text or 'error' in diff_text or 'patch' in diff_text:
+            return "fix"
+
+        # Added files usually mean new features
+        if any(s == 'added' for s in statuses):
+            return "feat"
+
+        return "refactor" if any(s == 'modified' for s in statuses) else "chore"
+
+    def generate_summary(self, style="conventional"):
+        changes = self.parse_changes()
+        files = changes['files']
+
+        if not files:
+            return None
+
+        commit_type = self.determine_commit_type(changes)
+        total_files = len(files)
+        adds = changes['additions']
+        dels = changes['deletions']
+
+        # Determine primary scope
+        scopes = set()
+        for f in files:
+            parts = pathlib.Path(f['path']).parts
+            if len(parts) > 1:
+                scopes.add(parts[0])
+            else:
+                scopes.add("root")
+        
+        scope_str = f"({', '.join(sorted(list(scopes))[:2])})" if scopes else ""
+
+        # Build Title
+        if total_files == 1:
+            file_name = pathlib.Path(files[0]['path']).name
+            summary_title = f"{commit_type}{scope_str}: update {file_name}"
+        else:
+            summary_title = f"{commit_type}{scope_str}: update {total_files} files (+{adds} -{dels})"
+
+        # Build Body
+        body_lines = []
+        body_lines.append(f"### Dikogits Commit Summary")
+        body_lines.append(f"- **Stats**: {total_files} file(s) changed, {adds} insertion(s)(+), {dels} deletion(s)(-)")
+        
+        body_lines.append("- **File Breakdown**:")
+        for f in files[:10]:  # Limit to 10 files
+            status_symbol = {
+                'added': '[A]',
+                'modified': '[M]',
+                'deleted': '[D]',
+                'renamed': '[R]',
+                'copied': '[C]'
+            }.get(f['status'], '[*]')
+            body_lines.append(f"  - {status_symbol} `{f['path']}` (+{f['additions']} -{f['deletions']})")
+
+        if len(files) > 10:
+            body_lines.append(f"  - ... and {len(files) - 10} more files")
+
+        if changes['details']:
+            body_lines.append("- **Key Changes**:")
+            for d in changes['details']:
+                body_lines.append(f"  - {d}")
+
+        return {
+            'title': summary_title,
+            'body': "\n".join(body_lines),
+            'full_summary': f"{summary_title}\n\n" + "\n".join(body_lines)
+        }
+
+    def save_staged_summary(self):
+        git_dir = self.get_git_dir()
+        if not git_dir:
+            return False
+        summary = self.generate_summary()
+        if not summary:
+            return False
+        
+        msg_file = os.path.join(git_dir, "DIKOGITS_MSG")
+        with open(msg_file, "w", encoding="utf-8") as f:
+            f.write(json.dumps(summary, indent=2))
+        return True
+
+    def apply_prepare_commit_msg(self, commit_msg_file, source=None):
+        git_dir = self.get_git_dir()
+        if not git_dir:
+            return False
+
+        dikogits_file = os.path.join(git_dir, "DIKOGITS_MSG")
+
+        # If DIKOGITS_MSG doesn't exist, try generating fresh summary on the spot
+        summary_data = None
+        if os.path.exists(dikogits_file):
+            try:
+                with open(dikogits_file, "r", encoding="utf-8") as f:
+                    summary_data = json.load(f)
+                os.remove(dikogits_file)
+            except Exception:
+                pass
+        
+        if not summary_data:
+            summary_data = self.generate_summary()
+
+        if not summary_data:
+            return False
+
+        # Read existing message in COMMIT_EDITMSG
+        existing_msg = ""
+        if os.path.exists(commit_msg_file):
+            with open(commit_msg_file, "r", encoding="utf-8") as f:
+                existing_msg = f.read()
+
+        # Check if user already provided a message (e.g. -m "custom message")
+        # Or if git template comments exist
+        non_comment_lines = [l for l in existing_msg.splitlines() if not l.strip().startswith('#')]
+        has_user_msg = len('\n'.join(non_comment_lines).strip()) > 0
+
+        new_content = []
+        if has_user_msg:
+            # User provided a title/message via -m or editor, append Dikogits summary
+            new_content.append(existing_msg.rstrip())
+            new_content.append("\n\n" + summary_data['body'])
+        else:
+            # Autogenerate title and body
+            new_content.append(summary_data['full_summary'])
+            # Retain git comment lines (help text) if any
+            comment_lines = [l for l in existing_msg.splitlines() if l.strip().startswith('#')]
+            if comment_lines:
+                new_content.append("\n" + "\n".join(comment_lines))
+
+        with open(commit_msg_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_content) + "\n")
+
+        return True
+
+
+def install_hooks(is_global=False):
+    engine = DikogitsEngine()
+    
+    if is_global:
+        home = os.path.expanduser("~")
+        hooks_dir = os.path.join(home, ".config", "git", "hooks")
+        os.makedirs(hooks_dir, exist_ok=True)
+        # Set global core.hooksPath
+        subprocess.run(["git", "config", "--global", "core.hooksPath", hooks_dir], check=True)
+    else:
+        git_dir = engine.get_git_dir()
+        if not git_dir:
+            print("Error: Not a git repository. Cannot install local hooks.", file=sys.stderr)
+            sys.exit(1)
+        hooks_dir = os.path.join(git_dir, "hooks")
+        os.makedirs(hooks_dir, exist_ok=True)
+
+    # Path to binary executable
+    executable_path = os.path.abspath(sys.argv[0])
+
+    # 1. pre-commit hook script content
+    pre_commit_script = f"""#!/bin/sh
+# Dikogits pre-commit hook
+"{executable_path}" hook pre-commit
+"""
+
+    # 2. prepare-commit-msg hook script content
+    prepare_commit_msg_script = f"""#!/bin/sh
+# Dikogits prepare-commit-msg hook
+"{executable_path}" hook prepare-commit-msg "$1" "$2" "$3"
+"""
+
+    pre_commit_file = os.path.join(hooks_dir, "pre-commit")
+    prepare_msg_file = os.path.join(hooks_dir, "prepare-commit-msg")
+
+    with open(pre_commit_file, "w") as f:
+        f.write(pre_commit_script)
+    os.chmod(pre_commit_file, 0o755)
+
+    with open(prepare_msg_file, "w") as f:
+        f.write(prepare_commit_msg_script)
+    os.chmod(prepare_msg_file, 0o755)
+
+    location = "globally" if is_global else f"locally in {hooks_dir}"
+    print(f"✓ Dikogits hooks installed successfully ({location}).")
+
+
+def uninstall_hooks(is_global=False):
+    engine = DikogitsEngine()
+    if is_global:
+        home = os.path.expanduser("~")
+        hooks_dir = os.path.join(home, ".config", "git", "hooks")
+    else:
+        git_dir = engine.get_git_dir()
+        if not git_dir:
+            print("Error: Not a git repository.", file=sys.stderr)
+            sys.exit(1)
+        hooks_dir = os.path.join(git_dir, "hooks")
+
+    pre_commit_file = os.path.join(hooks_dir, "pre-commit")
+    prepare_msg_file = os.path.join(hooks_dir, "prepare-commit-msg")
+
+    removed = 0
+    for fpath in [pre_commit_file, prepare_msg_file]:
+        if os.path.exists(fpath):
+            with open(fpath, 'r') as f:
+                content = f.read()
+            if "Dikogits" in content:
+                os.remove(fpath)
+                removed += 1
+
+    location = "globally" if is_global else "locally"
+    print(f"✓ Dikogits hooks uninstalled ({removed} hook(s) removed {location}).")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="git-dikogits",
+        description="Dikogits: Automated commit summary generator and Git pre-commit extension for macOS"
+    )
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {VERSION}")
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    # generate command
+    subparsers.add_parser("generate", help="Generate summary for current staged changes")
+
+    # install command
+    install_parser = subparsers.add_parser("install", help="Install Dikogits hooks into git repo")
+    install_parser.add_argument("--global", dest="is_global", action="store_true", help="Install globally for all repos")
+
+    # uninstall command
+    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall Dikogits hooks from git repo")
+    uninstall_parser.add_argument("--global", dest="is_global", action="store_true", help="Uninstall globally")
+
+    # hook command
+    hook_parser = subparsers.add_parser("hook", help="Internal git hook triggers")
+    hook_subparsers = hook_parser.add_subparsers(dest="hook_type")
+
+    # hook pre-commit
+    hook_subparsers.add_parser("pre-commit", help="Pre-commit hook handler")
+
+    # hook prepare-commit-msg
+    prep_msg_parser = hook_subparsers.add_parser("prepare-commit-msg", help="Prepare-commit-msg hook handler")
+    prep_msg_parser.add_argument("msg_file", help="Path to commit msg file")
+    prep_msg_parser.add_argument("source", nargs="?", default=None, help="Commit msg source")
+    prep_msg_parser.add_argument("sha", nargs="?", default=None, help="Commit SHA if amend")
+
+    args = parser.parse_args()
+
+    engine = DikogitsEngine()
+
+    if args.command == "generate":
+        summary = engine.generate_summary()
+        if summary:
+            print(summary['full_summary'])
+        else:
+            print("No staged changes found to summarize.")
+
+    elif args.command == "install":
+        install_hooks(args.is_global)
+
+    elif args.command == "uninstall":
+        uninstall_hooks(args.is_global)
+
+    elif args.command == "hook":
+        if args.hook_type == "pre-commit":
+            success = engine.save_staged_summary()
+            if success:
+                print("[Dikogits] Staged changes summarized successfully.", file=sys.stderr)
+
+        elif args.hook_type == "prepare-commit-msg":
+            engine.apply_prepare_commit_msg(args.msg_file, args.source)
+
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
