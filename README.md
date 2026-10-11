@@ -1,17 +1,18 @@
 # Dikogit - Git CLI Extension for macOS
 
-**Dikogit** is a Git command-line extension for macOS that automatically analyzes changed files, categorizes the commit type, and generates structured commit summaries.
+**Dikogit** is a fully automated Git CLI extension written in Go. Run `git dikogit` to automatically stage all changes, generate a structured conventional commit message, commit, and push — all with a single command.
 
 ---
 
 ## Features
 
-- 🚀 **Fully Automated Commits**: Run `git dikogit` to automatically stage all changes (`git add .`) and commit directly with a detailed summary.
-- 🏷️ **Conventional Commit Categorization**: Automatically categorizes commits into standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`) based on changed files and diff inspection.
-- 📊 **Detailed Statistics & Breakdown**: Computes file additions, deletions, status breakdown (`[A]`, `[M]`, `[D]`, `[R]`), and identifies key constructs (functions, imports, section titles).
-- 🍺 **Homebrew Distribution**: Easy global installation and version management via Homebrew tap.
-- 💻 **Flexible CLI Interface**: Auto-commit with `git dikogit` or preview/generate without committing via `git dikogit generate`.
-- ⚡ **Zero External Dependencies**: Pure Python 3 using standard library modules.
+- 🚀 **Full Automation**: `git dikogit` runs `git add .` → `git commit` → `git push` in one shot
+- 🏷️ **Conventional Commit Messages**: Auto-classifies commits as `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`
+- 📊 **Detailed Commit Body**: Shows file stats, additions/deletions, and key code constructs
+- 🍺 **Homebrew Distribution**: Easy global installation via Homebrew tap
+- 💻 **Flexible CLI**: Auto-commit or preview summaries before committing
+- ⚡ **Zero Runtime Dependencies**: Single static Go binary — no Python, no Node, no runtimes
+- 🔒 **Safe Push**: If no remote is configured, warns gracefully and keeps the commit locally
 
 ---
 
@@ -36,47 +37,56 @@ git dikogit --version
 
 ## Usage
 
-### 1. Fully Automated Commit (Default)
-To automatically stage all changed files (`git add .`), analyze the changes, and commit directly to your repository with a structured summary:
+### 1. Fully Automated: Stage → Commit → Push (Default)
+
+Run from any git repository:
 
 ```bash
 git dikogit
 ```
 
-Example Output:
+This will:
+1. `git add .` — stage all changes
+2. Analyze the diff and generate a structured commit message
+3. `git commit` — commit with the generated message
+4. `git push` — push to the remote
+
+Example output:
 ```text
 ✓ Staged all changes (git add .)
 ✓ Committed with summary:
 
-feat(root): update 2 files (+25 -2)
+feat(cmd): update main.go
 
 ### Dikogits Commit Summary
-- **Stats**: 2 file(s) changed, 25 insertion(s)(+), 2 deletion(s)(-)
+- **Stats**: 1 file(s) changed, 42 insertion(s)(+), 3 deletion(s)(-)
 - **File Breakdown**:
-  - [M] `file1.py` (+20 -2)
-  - [A] `docs/README.md` (+5 -0)
+  - [M] `cmd/git-dikogit/main.go` (+42 -3)
 - **Key Changes**:
-  - Defined `def calculate_summary():`
+  - Defined `func runAutoCommit(g *engine.Git, s *engine.Summarizer) {`
 
-[main 8f3c1d2] feat(root): update 2 files (+25 -2)
- 2 files changed, 25 insertions(+), 2 deletions(-)
+[main a1b2c3d] feat(cmd): update main.go
+
+✓ Pushed to remote
 ```
 
 ### 2. Generate Summary for Staged Changes (Without Committing)
-If you prefer to stage changes manually and only generate the summary without committing:
+
+Preview the commit message before committing:
 
 ```bash
 git add .
 git dikogit generate
 ```
 
-You can also pass the generated summary directly to `git commit`:
+Pass it directly to git commit:
 ```bash
 git commit -m "$(git dikogit generate)"
 ```
 
 ### 3. JSON Output
-For programmatic usage and scripts:
+
+For scripting and programmatic usage:
 
 ```bash
 git dikogit generate --json
@@ -93,13 +103,13 @@ To distribute `dikogit` via Homebrew:
    - Homebrew maps `brew tap Atsuwastaken/dikogit` to this repository automatically.
 
 2. **Add the Formula**:
-   - Copy [`Formula/dikogit.rb`](file:///Users/atsu/DikoGit/Formula/dikogit.rb) into the `Formula/` directory of your `homebrew-dikogit` repository.
+   - Copy `Formula/dikogit.rb` into the `Formula/` directory of your `homebrew-dikogit` repository.
 
 3. **Tag a Release in `DIkoGit`**:
-   - Create a release tag (e.g. `v1.1.0`).
+   - Create a release tag (e.g. `v2.0.0`).
    - Calculate checksum:
      ```bash
-     curl -sL https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v1.1.0.tar.gz | shasum -256
+     curl -sL https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v2.0.0.tar.gz | shasum -256
      ```
    - Update `url` and `sha256` in `Formula/dikogit.rb`.
 
@@ -111,10 +121,37 @@ To distribute `dikogit` via Homebrew:
 
 ---
 
+## Project Structure
+
+```
+DikoGit/
+├── cmd/
+│   └── git-dikogit/
+│       └── main.go          # CLI entrypoint (subcommands, flags)
+├── internal/
+│   └── engine/
+│       ├── git.go           # Git subprocess wrapper (add, commit, push, diff)
+│       ├── summarizer.go    # Commit message generator
+│       └── engine_test.go   # Go test suite
+├── Formula/
+│   └── dikogit.rb           # Homebrew formula
+├── go.mod
+└── README.md
+```
+
+---
+
 ## Running Tests
 
-Run the test suite:
+```bash
+go test ./...
+```
+
+---
+
+## Uninstall
 
 ```bash
-python3 -m unittest discover -s tests
+brew uninstall dikogit
+brew untap Atsuwastaken/dikogit
 ```
