@@ -9,7 +9,7 @@
 - ⚡ **Automatic Hook Execution**: Integrates with Git `pre-commit` and `prepare-commit-msg` hooks to capture staged diffs seamlessly.
 - 🏷️ **Conventional Commit Categorization**: Automatically categorizes commits into standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`) based on changed files and diff inspection.
 - 📊 **Detailed Breakdown**: Includes file addition/deletion statistics, file status breakdown (`[A]`, `[M]`, `[D]`, `[R]`), and key constructs added (functions, imports, sections).
-- 🛠️ **Seamless CLI Integration**: Can be run manually as `git dikogits generate` or automatically upon executing `git commit`.
+- 🛠️ **Seamless CLI Integration**: Can be run manually as `git dikogit generate` or automatically upon executing `git commit`.
 - 🍏 **Native macOS Compatibility**: Designed for macOS zsh/bash environments without requiring external binary dependencies.
 
 ---
@@ -23,25 +23,25 @@ Run the installer script from the project directory:
 ./install.sh
 ```
 
-This will link `git-dikogits` into `~/.local/bin` and install local git hooks for the current repository.
+This will link `git-dikogit` into `~/.local/bin` and install local git hooks for the current repository.
 
 ### 2. Manual Installation
-Add `bin/git-dikogits` to your system `$PATH` or symlink it:
+Add `bin/git-dikogit` to your system `$PATH` or symlink it:
 
 ```bash
-ln -sf $(pwd)/bin/git-dikogits ~/.local/bin/git-dikogits
+ln -sf $(pwd)/bin/git-dikogit ~/.local/bin/git-dikogit
 ```
 
 Then install local Git hooks in any repository:
 
 ```bash
-git dikogits install
+git dikogit install
 ```
 
 Or install globally for all Git repositories on your macOS system:
 
 ```bash
-git dikogits install --global
+git dikogit install --global
 ```
 
 ---
@@ -72,7 +72,7 @@ git dikogits install --global
    You can also generate a summary anytime without committing:
 
    ```bash
-   git dikogits generate
+   git dikogit generate
    ```
 
 ---
@@ -88,7 +88,7 @@ To remove hooks from a repository or globally:
 or
 
 ```bash
-git dikogits uninstall [--global]
+git dikogit uninstall [--global]
 ```
 
 ---

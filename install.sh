@@ -4,7 +4,7 @@ set -e
 
 BIN_DIR="${HOME}/.local/bin"
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-EXECUTABLE_SRC="${PROJECT_DIR}/bin/git-dikogits"
+EXECUTABLE_SRC="${PROJECT_DIR}/bin/git-dikogit"
 
 echo "=========================================="
 echo "      Dikogits macOS Installer            "
@@ -18,8 +18,8 @@ fi
 chmod +x "$EXECUTABLE_SRC"
 
 mkdir -p "$BIN_DIR"
-ln -sf "$EXECUTABLE_SRC" "$BIN_DIR/git-dikogits"
-ln -sf "$EXECUTABLE_SRC" "$BIN_DIR/dikogits"
+ln -sf "$EXECUTABLE_SRC" "$BIN_DIR/git-dikogit"
+ln -sf "$EXECUTABLE_SRC" "$BIN_DIR/dikogit"
 
 echo "✓ Installed binaries to $BIN_DIR"
 
@@ -33,9 +33,9 @@ fi
 
 echo ""
 echo "Installing Dikogits Git hooks for current repository..."
-"$BIN_DIR/git-dikogits" install
+"$BIN_DIR/git-dikogit" install
 
 echo ""
 echo "Setup complete! You can now run:"
-echo "  git dikogits generate"
+echo "  git dikogit generate"
 echo "  git commit"

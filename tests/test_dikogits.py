@@ -14,8 +14,8 @@ sys.path.insert(0, str(BIN_DIR))
 
 # Import Dikogits engine
 from importlib.machinery import SourceFileLoader
-git_dikogits_path = str(BIN_DIR / "git-dikogits")
-dikogits = SourceFileLoader("git_dikogits", git_dikogits_path).load_module()
+git_dikogits_path = str(BIN_DIR / "git-dikogit")
+dikogits = SourceFileLoader("git_dikogit", git_dikogits_path).load_module()
 
 class TestDikogits(unittest.TestCase):
     def setUp(self):
