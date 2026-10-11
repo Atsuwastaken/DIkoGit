@@ -32,4 +32,4 @@ fi
 
 echo ""
 echo "Installation complete! Run:"
-echo "  git dikogit generate"
+echo "  git dikogit"

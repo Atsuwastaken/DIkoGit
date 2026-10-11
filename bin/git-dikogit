@@ -11,7 +11,7 @@ import re
 import pathlib
 import json
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 class DikogitsEngine:
     def __init__(self, repo_root=None):
@@ -48,6 +48,60 @@ class DikogitsEngine:
             return git_dir
         except subprocess.CalledProcessError:
             return None
+
+    def stage_all(self):
+        """Stage all changed and untracked files with git add ."""
+        if not self.repo_root:
+            return False
+        try:
+            subprocess.run(
+                ["git", "add", "."],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                cwd=self.repo_root
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            err = e.stderr.strip() or e.stdout.strip()
+            print(f"Error staging files: {err}", file=sys.stderr)
+            return False
+
+    def commit(self, summary):
+        """Commit staged changes using generated summary"""
+        if not self.repo_root or not summary:
+            return None
+        try:
+            res = subprocess.run(
+                ["git", "commit", "-m", summary['title'], "-m", summary['body']],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                cwd=self.repo_root
+            )
+            return res.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            err = e.stderr.strip() or e.stdout.strip()
+            print(f"Error committing changes: {err}", file=sys.stderr)
+            return None
+
+    def auto_commit(self):
+        """Automate git add . and commit with generated summary"""
+        if not self.stage_all():
+            return {"status": "stage_failed"}
+        summary = self.generate_summary()
+        if not summary:
+            return {"status": "no_changes"}
+        commit_output = self.commit(summary)
+        if commit_output is None:
+            return {"status": "commit_failed"}
+        return {
+            "status": "success",
+            "summary": summary,
+            "commit_output": commit_output
+        }
 
     def get_staged_diff(self):
         try:
@@ -271,22 +325,41 @@ class DikogitsEngine:
 def main():
     parser = argparse.ArgumentParser(
         prog="git-dikogit",
-        description="Dikogit: Automated commit summary generator CLI extension for Git"
+        description="Dikogit: Automated commit summary generator and auto-commit CLI extension for Git"
     )
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {VERSION}")
 
     subparsers = parser.add_subparsers(dest="command")
 
+    # commit command (explicit subcommand for default behavior)
+    subparsers.add_parser("commit", help="Stage all changes and commit directly with generated summary (default)")
+
     # generate command
-    gen_parser = subparsers.add_parser("generate", help="Generate summary for current staged changes")
+    gen_parser = subparsers.add_parser("generate", help="Generate summary for current staged changes without committing")
     gen_parser.add_argument("--json", action="store_true", help="Output summary in JSON format")
 
     args = parser.parse_args()
 
     engine = DikogitsEngine()
+    if not engine.repo_root:
+        print("fatal: not a git repository (or any of the parent directories): .git", file=sys.stderr)
+        sys.exit(1)
 
-    # Default to generate if no subcommand is provided
-    if args.command in (None, "generate"):
+    # Default to auto_commit when no command is provided or 'commit' is explicitly used
+    if args.command in (None, "commit"):
+        res = engine.auto_commit()
+        if res["status"] == "no_changes":
+            print("No changes found to commit (working tree clean).", file=sys.stderr)
+            sys.exit(1)
+        elif res["status"] != "success":
+            sys.exit(1)
+        else:
+            print("✓ Staged all changes (git add .)")
+            print("✓ Committed with summary:\n")
+            print(res["summary"]["full_summary"])
+            if res["commit_output"]:
+                print(f"\n{res['commit_output']}")
+    elif args.command == "generate":
         summary = engine.generate_summary()
         if summary:
             if getattr(args, "json", False):

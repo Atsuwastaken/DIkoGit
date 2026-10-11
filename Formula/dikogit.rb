@@ -1,7 +1,7 @@
 class Dikogit < Formula
-  desc "Automated commit summary generator CLI extension for Git on macOS"
+  desc "Automated commit and summary generator CLI extension for Git on macOS"
   homepage "https://github.com/Atsuwastaken/DIkoGit"
-  url "https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v1.0.0.tar.gz"
+  url "https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v1.1.0.tar.gz"
   # sha256 "<INSERT_RELEASE_SHA256_HERE>"
   license "MIT"
   head "https://github.com/Atsuwastaken/DIkoGit.git", branch: "main"
@@ -16,15 +16,15 @@ class Dikogit < Formula
   def caveats
     <<~EOS
       Usage:
-        Stage your changes with `git add`, then run:
-          git dikogit generate
+        To automatically stage all changes and commit with summary:
+          git dikogit
 
-        To commit directly with the generated summary:
-          git commit -m "$(git dikogit generate)"
+        To only generate summary for staged changes without committing:
+          git dikogit generate
     EOS
   end
 
   test do
-    assert_match "git-dikogit 1.0.0", shell_output("#{bin}/git-dikogit --version")
+    assert_match "git-dikogit 1.1.0", shell_output("#{bin}/git-dikogit --version")
   end
 end

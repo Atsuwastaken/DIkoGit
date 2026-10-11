@@ -1,15 +1,16 @@
 # Dikogit - Git CLI Extension for macOS
 
-**Dikogit** is a Git command-line extension for macOS that automatically analyzes staged code changes, categorizes the commit type, and generates structured commit summaries.
+**Dikogit** is a Git command-line extension for macOS that automatically analyzes changed files, categorizes the commit type, and generates structured commit summaries.
 
 ---
 
 ## Features
 
+- 🚀 **Fully Automated Commits**: Run `git dikogit` to automatically stage all changes (`git add .`) and commit directly with a detailed summary.
 - 🏷️ **Conventional Commit Categorization**: Automatically categorizes commits into standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`) based on changed files and diff inspection.
 - 📊 **Detailed Statistics & Breakdown**: Computes file additions, deletions, status breakdown (`[A]`, `[M]`, `[D]`, `[R]`), and identifies key constructs (functions, imports, section titles).
 - 🍺 **Homebrew Distribution**: Easy global installation and version management via Homebrew tap.
-- 💻 **Simple CLI Interface**: Use `git dikogit generate` or pipe it directly into `git commit`.
+- 💻 **Flexible CLI Interface**: Auto-commit with `git dikogit` or preview/generate without committing via `git dikogit generate`.
 - ⚡ **Zero External Dependencies**: Pure Python 3 using standard library modules.
 
 ---
@@ -35,16 +36,18 @@ git dikogit --version
 
 ## Usage
 
-### 1. Generate Summary for Staged Changes
-Stage your changes with `git add`, then run:
+### 1. Fully Automated Commit (Default)
+To automatically stage all changed files (`git add .`), analyze the changes, and commit directly to your repository with a structured summary:
 
 ```bash
-git add .
-git dikogit generate
+git dikogit
 ```
 
 Example Output:
 ```text
+✓ Staged all changes (git add .)
+✓ Committed with summary:
+
 feat(root): update 2 files (+25 -2)
 
 ### Dikogits Commit Summary
@@ -54,11 +57,20 @@ feat(root): update 2 files (+25 -2)
   - [A] `docs/README.md` (+5 -0)
 - **Key Changes**:
   - Defined `def calculate_summary():`
+
+[main 8f3c1d2] feat(root): update 2 files (+25 -2)
+ 2 files changed, 25 insertions(+), 2 deletions(-)
 ```
 
-### 2. Commit Directly with Generated Summary
-You can directly pass the generated summary to `git commit`:
+### 2. Generate Summary for Staged Changes (Without Committing)
+If you prefer to stage changes manually and only generate the summary without committing:
 
+```bash
+git add .
+git dikogit generate
+```
+
+You can also pass the generated summary directly to `git commit`:
 ```bash
 git commit -m "$(git dikogit generate)"
 ```
