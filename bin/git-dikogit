@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Dikogits - Git Extension for Automatic Commit Summaries on macOS
+Dikogit - Git CLI Extension for Commit Summaries on macOS
 """
 
 import sys
@@ -267,206 +267,35 @@ class DikogitsEngine:
             'full_summary': f"{summary_title}\n\n" + "\n".join(body_lines)
         }
 
-    def save_staged_summary(self):
-        git_dir = self.get_git_dir()
-        if not git_dir:
-            return False
-        summary = self.generate_summary()
-        if not summary:
-            return False
-        
-        msg_file = os.path.join(git_dir, "DIKOGITS_MSG")
-        with open(msg_file, "w", encoding="utf-8") as f:
-            f.write(json.dumps(summary, indent=2))
-        return True
-
-    def apply_prepare_commit_msg(self, commit_msg_file, source=None):
-        git_dir = self.get_git_dir()
-        if not git_dir:
-            return False
-
-        dikogits_file = os.path.join(git_dir, "DIKOGITS_MSG")
-
-        # If DIKOGITS_MSG doesn't exist, try generating fresh summary on the spot
-        summary_data = None
-        if os.path.exists(dikogits_file):
-            try:
-                with open(dikogits_file, "r", encoding="utf-8") as f:
-                    summary_data = json.load(f)
-                os.remove(dikogits_file)
-            except Exception:
-                pass
-        
-        if not summary_data:
-            summary_data = self.generate_summary()
-
-        if not summary_data:
-            return False
-
-        # Read existing message in COMMIT_EDITMSG
-        existing_msg = ""
-        if os.path.exists(commit_msg_file):
-            with open(commit_msg_file, "r", encoding="utf-8") as f:
-                existing_msg = f.read()
-
-        # Check if user already provided a message (e.g. -m "custom message")
-        # Or if git template comments exist
-        non_comment_lines = [l for l in existing_msg.splitlines() if not l.strip().startswith('#')]
-        has_user_msg = len('\n'.join(non_comment_lines).strip()) > 0
-
-        new_content = []
-        if has_user_msg:
-            # User provided a title/message via -m or editor, append Dikogits summary
-            new_content.append(existing_msg.rstrip())
-            new_content.append("\n\n" + summary_data['body'])
-        else:
-            # Autogenerate title and body
-            new_content.append(summary_data['full_summary'])
-            # Retain git comment lines (help text) if any
-            comment_lines = [l for l in existing_msg.splitlines() if l.strip().startswith('#')]
-            if comment_lines:
-                new_content.append("\n" + "\n".join(comment_lines))
-
-        with open(commit_msg_file, "w", encoding="utf-8") as f:
-            f.write("\n".join(new_content) + "\n")
-
-        return True
-
-
-def install_hooks(is_global=False):
-    engine = DikogitsEngine()
-    
-    if is_global:
-        home = os.path.expanduser("~")
-        hooks_dir = os.path.join(home, ".config", "git", "hooks")
-        os.makedirs(hooks_dir, exist_ok=True)
-        # Set global core.hooksPath
-        subprocess.run(["git", "config", "--global", "core.hooksPath", hooks_dir], check=True)
-    else:
-        git_dir = engine.get_git_dir()
-        if not git_dir:
-            print("Error: Not a git repository. Cannot install local hooks.", file=sys.stderr)
-            sys.exit(1)
-        hooks_dir = os.path.join(git_dir, "hooks")
-        os.makedirs(hooks_dir, exist_ok=True)
-
-    # Path to binary executable
-    executable_path = os.path.abspath(sys.argv[0])
-
-    # 1. pre-commit hook script content
-    pre_commit_script = f"""#!/bin/sh
-# Dikogits pre-commit hook
-"{executable_path}" hook pre-commit
-"""
-
-    # 2. prepare-commit-msg hook script content
-    prepare_commit_msg_script = f"""#!/bin/sh
-# Dikogits prepare-commit-msg hook
-"{executable_path}" hook prepare-commit-msg "$1" "$2" "$3"
-"""
-
-    pre_commit_file = os.path.join(hooks_dir, "pre-commit")
-    prepare_msg_file = os.path.join(hooks_dir, "prepare-commit-msg")
-
-    with open(pre_commit_file, "w") as f:
-        f.write(pre_commit_script)
-    os.chmod(pre_commit_file, 0o755)
-
-    with open(prepare_msg_file, "w") as f:
-        f.write(prepare_commit_msg_script)
-    os.chmod(prepare_msg_file, 0o755)
-
-    location = "globally" if is_global else f"locally in {hooks_dir}"
-    print(f"✓ Dikogits hooks installed successfully ({location}).")
-
-
-def uninstall_hooks(is_global=False):
-    engine = DikogitsEngine()
-    if is_global:
-        home = os.path.expanduser("~")
-        hooks_dir = os.path.join(home, ".config", "git", "hooks")
-    else:
-        git_dir = engine.get_git_dir()
-        if not git_dir:
-            print("Error: Not a git repository.", file=sys.stderr)
-            sys.exit(1)
-        hooks_dir = os.path.join(git_dir, "hooks")
-
-    pre_commit_file = os.path.join(hooks_dir, "pre-commit")
-    prepare_msg_file = os.path.join(hooks_dir, "prepare-commit-msg")
-
-    removed = 0
-    for fpath in [pre_commit_file, prepare_msg_file]:
-        if os.path.exists(fpath):
-            with open(fpath, 'r') as f:
-                content = f.read()
-            if "Dikogits" in content:
-                os.remove(fpath)
-                removed += 1
-
-    location = "globally" if is_global else "locally"
-    print(f"✓ Dikogits hooks uninstalled ({removed} hook(s) removed {location}).")
-
 
 def main():
     parser = argparse.ArgumentParser(
         prog="git-dikogit",
-        description="Dikogits: Automated commit summary generator and Git pre-commit extension for macOS"
+        description="Dikogit: Automated commit summary generator CLI extension for Git"
     )
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {VERSION}")
 
     subparsers = parser.add_subparsers(dest="command")
 
     # generate command
-    subparsers.add_parser("generate", help="Generate summary for current staged changes")
-
-    # install command
-    install_parser = subparsers.add_parser("install", help="Install Dikogits hooks into git repo")
-    install_parser.add_argument("--global", dest="is_global", action="store_true", help="Install globally for all repos")
-
-    # uninstall command
-    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall Dikogits hooks from git repo")
-    uninstall_parser.add_argument("--global", dest="is_global", action="store_true", help="Uninstall globally")
-
-    # hook command
-    hook_parser = subparsers.add_parser("hook", help="Internal git hook triggers")
-    hook_subparsers = hook_parser.add_subparsers(dest="hook_type")
-
-    # hook pre-commit
-    hook_subparsers.add_parser("pre-commit", help="Pre-commit hook handler")
-
-    # hook prepare-commit-msg
-    prep_msg_parser = hook_subparsers.add_parser("prepare-commit-msg", help="Prepare-commit-msg hook handler")
-    prep_msg_parser.add_argument("msg_file", help="Path to commit msg file")
-    prep_msg_parser.add_argument("source", nargs="?", default=None, help="Commit msg source")
-    prep_msg_parser.add_argument("sha", nargs="?", default=None, help="Commit SHA if amend")
+    gen_parser = subparsers.add_parser("generate", help="Generate summary for current staged changes")
+    gen_parser.add_argument("--json", action="store_true", help="Output summary in JSON format")
 
     args = parser.parse_args()
 
     engine = DikogitsEngine()
 
-    if args.command == "generate":
+    # Default to generate if no subcommand is provided
+    if args.command in (None, "generate"):
         summary = engine.generate_summary()
         if summary:
-            print(summary['full_summary'])
+            if getattr(args, "json", False):
+                print(json.dumps(summary, indent=2))
+            else:
+                print(summary['full_summary'])
         else:
-            print("No staged changes found to summarize.")
-
-    elif args.command == "install":
-        install_hooks(args.is_global)
-
-    elif args.command == "uninstall":
-        uninstall_hooks(args.is_global)
-
-    elif args.command == "hook":
-        if args.hook_type == "pre-commit":
-            success = engine.save_staged_summary()
-            if success:
-                print("[Dikogits] Staged changes summarized successfully.", file=sys.stderr)
-
-        elif args.hook_type == "prepare-commit-msg":
-            engine.apply_prepare_commit_msg(args.msg_file, args.source)
-
+            print("No staged changes found to summarize.", file=sys.stderr)
+            sys.exit(1)
     else:
         parser.print_help()
 

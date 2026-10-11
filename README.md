@@ -1,101 +1,127 @@
-# Dikogits - Git Extension for macOS
+# Dikogit - Git CLI Extension for macOS
 
-**Dikogits** is a Git extension and hook integration for macOS that automatically analyzes staged code changes before each commit, generates a structured commit summary, and updates the commit message accordingly.
+**Dikogit** is a Git command-line extension for macOS that automatically analyzes staged code changes, categorizes the commit type, and generates structured commit summaries.
 
 ---
 
-## Key Features
+## Features
 
-- ⚡ **Automatic Hook Execution**: Integrates with Git `pre-commit` and `prepare-commit-msg` hooks to capture staged diffs seamlessly.
 - 🏷️ **Conventional Commit Categorization**: Automatically categorizes commits into standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`) based on changed files and diff inspection.
-- 📊 **Detailed Breakdown**: Includes file addition/deletion statistics, file status breakdown (`[A]`, `[M]`, `[D]`, `[R]`), and key constructs added (functions, imports, sections).
-- 🛠️ **Seamless CLI Integration**: Can be run manually as `git dikogit generate` or automatically upon executing `git commit`.
-- 🍏 **Native macOS Compatibility**: Designed for macOS zsh/bash environments without requiring external binary dependencies.
+- 📊 **Detailed Statistics & Breakdown**: Computes file additions, deletions, status breakdown (`[A]`, `[M]`, `[D]`, `[R]`), and identifies key constructs (functions, imports, section titles).
+- 🍺 **Homebrew Distribution**: Easy global installation and version management via Homebrew tap.
+- 💻 **Simple CLI Interface**: Use `git dikogit generate` or pipe it directly into `git commit`.
+- ⚡ **Zero External Dependencies**: Pure Python 3 using standard library modules.
 
 ---
 
-## Installation
+## Installation via Homebrew (Recommended)
 
-### 1. One-Step Installer Script
-Run the installer script from the project directory:
+Install `dikogit` globally on macOS:
+
+```bash
+# 1. Tap the custom Homebrew repository
+brew tap Atsuwastaken/dikogit
+
+# 2. Install dikogit
+brew install dikogit
+```
+
+Verify installation:
+```bash
+git dikogit --version
+```
+
+---
+
+## Usage
+
+### 1. Generate Summary for Staged Changes
+Stage your changes with `git add`, then run:
+
+```bash
+git add .
+git dikogit generate
+```
+
+Example Output:
+```text
+feat(root): update 2 files (+25 -2)
+
+### Dikogits Commit Summary
+- **Stats**: 2 file(s) changed, 25 insertion(s)(+), 2 deletion(s)(-)
+- **File Breakdown**:
+  - [M] `file1.py` (+20 -2)
+  - [A] `docs/README.md` (+5 -0)
+- **Key Changes**:
+  - Defined `def calculate_summary():`
+```
+
+### 2. Commit Directly with Generated Summary
+You can directly pass the generated summary to `git commit`:
+
+```bash
+git commit -m "$(git dikogit generate)"
+```
+
+### 3. JSON Output
+For programmatic usage and scripts:
+
+```bash
+git dikogit generate --json
+```
+
+---
+
+## Setting Up Your Custom Homebrew Tap on GitHub
+
+To distribute `dikogit` via Homebrew:
+
+1. **Create the Tap Repository on GitHub**:
+   - Create a public repo named `homebrew-dikogit` under `Atsuwastaken` (`https://github.com/Atsuwastaken/homebrew-dikogit`).
+   - Homebrew maps `brew tap Atsuwastaken/dikogit` to this repository automatically.
+
+2. **Add the Formula**:
+   - Copy [`Formula/dikogit.rb`](file:///Users/atsu/DikoGit/Formula/dikogit.rb) into the `Formula/` directory of your `homebrew-dikogit` repository.
+
+3. **Tag a Release in `DIkoGit`**:
+   - Create a release tag (e.g. `v1.0.0`).
+   - Calculate checksum:
+     ```bash
+     curl -sL https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v1.0.0.tar.gz | shasum -256
+     ```
+   - Update `url` and `sha256` in `Formula/dikogit.rb`.
+
+4. **Install and Update**:
+   ```bash
+   brew tap Atsuwastaken/dikogit
+   brew install dikogit
+   ```
+
+---
+
+## Local Development Installation
+
+If you prefer installing without Homebrew during local development:
 
 ```bash
 ./install.sh
 ```
 
-This will link `git-dikogit` into `~/.local/bin` and install local git hooks for the current repository.
-
-### 2. Manual Installation
-Add `bin/git-dikogit` to your system `$PATH` or symlink it:
-
+Ensure `~/.local/bin` is in your `$PATH`:
 ```bash
-ln -sf $(pwd)/bin/git-dikogit ~/.local/bin/git-dikogit
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Then install local Git hooks in any repository:
-
-```bash
-git dikogit install
-```
-
-Or install globally for all Git repositories on your macOS system:
-
-```bash
-git dikogit install --global
-```
-
----
-
-## Usage Workflow
-
-1. **Stage your changes as usual**:
-   ```bash
-   git add file1.py docs/README.md
-   ```
-
-2. **Run `git commit`**:
-   The `pre-commit` hook automatically analyzes staged changes, and `prepare-commit-msg` updates the commit message editor with the pre-commit generated summary:
-
-   ```
-   feat(root): update 2 files (+25 -2)
-
-   ### Dikogits Commit Summary
-   - **Stats**: 2 file(s) changed, 25 insertion(s)(+), 2 deletion(s)(-)
-   - **File Breakdown**:
-     - [M] `file1.py` (+20 -2)
-     - [A] `docs/README.md` (+5 -0)
-   - **Key Changes**:
-     - Defined `def calculate_summary():`
-   ```
-
-3. **Manual Summary Generation**:
-   You can also generate a summary anytime without committing:
-
-   ```bash
-   git dikogit generate
-   ```
-
----
-
-## Uninstallation
-
-To remove hooks from a repository or globally:
-
+To remove the local symlink:
 ```bash
 ./uninstall.sh
-```
-
-or
-
-```bash
-git dikogit uninstall [--global]
 ```
 
 ---
 
 ## Running Tests
 
-Run the included unit test suite:
+Run the test suite:
 
 ```bash
 python3 -m unittest discover -s tests

@@ -1,27 +1,19 @@
 #!/bin/bash
-# Dikogits Uninstaller Script
+# Dikogit Local Uninstaller Script
 set -e
 
 BIN_DIR="${HOME}/.local/bin"
 
-echo "Uninstalling Dikogits..."
-if [ -f "$BIN_DIR/git-dikogit" ]; then
-    rm -f "$BIN_DIR/git-dikogit"
-fi
-if [ -f "$BIN_DIR/dikogit" ]; then
-    rm -f "$BIN_DIR/dikogit"
-fi
-if [ -f "$BIN_DIR/git-dikogits" ]; then
-    rm -f "$BIN_DIR/git-dikogits"
-fi
-if [ -f "$BIN_DIR/dikogits" ]; then
-    rm -f "$BIN_DIR/dikogits"
-fi
-
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if command -v git-dikogit >/dev/null 2>&1; then
-        git-dikogit uninstall || true
+echo "Uninstalling Dikogit from $BIN_DIR..."
+for bin_name in git-dikogit dikogit git-dikogits dikogits; do
+    if [ -f "$BIN_DIR/$bin_name" ]; then
+        rm -f "$BIN_DIR/$bin_name"
     fi
+done
+
+# Clean up any leftover legacy hooks in current repository
+if [ -d ".git/hooks" ]; then
+    rm -f .git/hooks/pre-commit .git/hooks/prepare-commit-msg
 fi
 
-echo "✓ Dikogits uninstalled successfully."
+echo "✓ Dikogit uninstalled successfully."

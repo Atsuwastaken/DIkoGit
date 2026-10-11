@@ -8,7 +8,7 @@ import subprocess
 import json
 from pathlib import Path
 
-# Add bin to path so we can import git-dikogits
+# Add bin to path so we can import git-dikogit
 BIN_DIR = Path(__file__).resolve().parent.parent / "bin"
 sys.path.insert(0, str(BIN_DIR))
 
@@ -60,51 +60,33 @@ class TestDikogits(unittest.TestCase):
         self.assertTrue(summary['title'].startswith("feat"))
         self.assertIn("feature.py", summary['body'])
 
-    def test_hook_installation(self):
-        engine = dikogits.DikogitsEngine(self.temp_dir)
-        dikogits.install_hooks(is_global=False)
-
-        git_dir = engine.get_git_dir()
-        pre_commit = os.path.join(git_dir, "hooks", "pre-commit")
-        prep_msg = os.path.join(git_dir, "hooks", "prepare-commit-msg")
-
-        self.assertTrue(os.path.exists(pre_commit))
-        self.assertTrue(os.path.exists(prep_msg))
-        self.assertTrue(os.access(pre_commit, os.X_OK))
-        self.assertTrue(os.access(prep_msg, os.X_OK))
-
-        dikogits.uninstall_hooks(is_global=False)
-        self.assertFalse(os.path.exists(pre_commit))
-        self.assertFalse(os.path.exists(prep_msg))
-
-    def test_end_to_end_commit_workflow(self):
-        engine = dikogits.DikogitsEngine(self.temp_dir)
-        dikogits.install_hooks(is_global=False)
-
-        # Stage a new file
-        file1 = Path(self.temp_dir) / "README.md"
-        file1.write_text("# Project Docs\nThis is documentation.\n")
+    def test_cli_execution_generate(self):
+        # Stage a documentation file
+        readme = Path(self.temp_dir) / "README.md"
+        readme.write_text("# Project Documentation\nTesting CLI generation.\n")
         subprocess.run(["git", "add", "README.md"], check=True)
 
-        # Trigger pre-commit hook
-        saved = engine.save_staged_summary()
-        self.assertTrue(saved)
+        # Run git-dikogit CLI generate command
+        result = subprocess.run(
+            [git_dikogits_path, "generate"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        self.assertIn("docs", result.stdout)
+        self.assertIn("README.md", result.stdout)
+        self.assertIn("Dikogits Commit Summary", result.stdout)
 
-        dikogits_msg = os.path.join(engine.get_git_dir(), "DIKOGITS_MSG")
-        self.assertTrue(os.path.exists(dikogits_msg))
-
-        # Trigger prepare-commit-msg hook
-        commit_msg_file = os.path.join(self.temp_dir, ".git", "COMMIT_EDITMSG")
-        Path(commit_msg_file).write_text("# Initial commit message\n")
-
-        applied = engine.apply_prepare_commit_msg(commit_msg_file)
-        self.assertTrue(applied)
-
-        # Verify COMMIT_EDITMSG content
-        msg_content = Path(commit_msg_file).read_text()
-        self.assertIn("docs", msg_content)
-        self.assertIn("Dikogits Commit Summary", msg_content)
-        self.assertIn("README.md", msg_content)
+    def test_cli_no_staged_changes(self):
+        result = subprocess.run(
+            [git_dikogits_path, "generate"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("No staged changes found", result.stderr)
 
 if __name__ == "__main__":
     unittest.main()

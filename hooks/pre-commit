@@ -1,9 +1,0 @@
-#!/bin/sh
-# Dikogits pre-commit hook for macOS
-# Automatically generates staged change summary before commit
-
-if command -v git-dikogit >/dev/null 2>&1; then
-    git-dikogit hook pre-commit
-elif [ -f "$(dirname "$0")/../../bin/git-dikogit" ]; then
-    "$(dirname "$0")/../../bin/git-dikogit" hook pre-commit
-fi
