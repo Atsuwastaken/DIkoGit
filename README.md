@@ -1,12 +1,12 @@
 # Dikogit - Git CLI Extension for macOS
 
-**Dikogit** is a fully automated Git CLI extension written in Go. Run `git dikogit` to automatically stage all changes, generate a structured conventional commit message, commit, and push — all with a single command.
+**Dikogit** is a fully automated Git CLI extension written in Go. Run `git dikotgit` to automatically stage all changes, generate a structured conventional commit message, commit, and push — all with a single command.
 
 ---
 
 ## Features
 
-- 🚀 **Full Automation**: `git dikogit` runs `git add .` → `git commit` → `git push` in one shot
+- 🚀 **Full Automation**: `git dikotgit` runs `git add .` → `git commit` → `git push` in one shot
 - 🏷️ **Conventional Commit Messages**: Auto-classifies commits as `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`
 - 📊 **Detailed Commit Body**: Shows file stats, additions/deletions, and key code constructs
 - 🍺 **Homebrew Distribution**: Easy global installation via Homebrew tap
@@ -30,7 +30,7 @@ brew install dikogit
 
 Verify installation:
 ```bash
-git dikogit --version
+git dikotgit --version
 ```
 
 ---
@@ -42,7 +42,7 @@ git dikogit --version
 Run from any git repository:
 
 ```bash
-git dikogit
+git dikotgit
 ```
 
 This will:
@@ -76,12 +76,12 @@ Preview the commit message before committing:
 
 ```bash
 git add .
-git dikogit generate
+git dikotgit generate
 ```
 
 Pass it directly to git commit:
 ```bash
-git commit -m "$(git dikogit generate)"
+git commit -m "$(git dikotgit generate)"
 ```
 
 ### 3. JSON Output
@@ -89,7 +89,7 @@ git commit -m "$(git dikogit generate)"
 For scripting and programmatic usage:
 
 ```bash
-git dikogit generate --json
+git dikotgit generate --json
 ```
 
 ---

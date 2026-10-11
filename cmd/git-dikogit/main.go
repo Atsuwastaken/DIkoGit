@@ -2,10 +2,10 @@
 //
 // Usage:
 //
-//	git dikogit              — stage all, commit with generated summary, then push
-//	git dikogit generate     — print commit summary for staged changes (no commit)
-//	git dikogit generate --json  — same but in JSON format
-//	git dikogit --version    — print version
+//	git dikotgit              — stage all, commit with generated summary, then push
+//	git dikotgit generate     — print commit summary for staged changes (no commit)
+//	git dikotgit generate --json  — same but in JSON format
+//	git dikotgit --version    — print version
 package main
 
 import (
@@ -22,7 +22,7 @@ func main() {
 
 	// --version / -v
 	if hasFlag(args, "--version", "-v") {
-		fmt.Printf("git-dikogit %s\n", engine.Version)
+		fmt.Printf("git-dikotgit %s\n", engine.Version)
 		os.Exit(0)
 	}
 
@@ -139,19 +139,19 @@ func runGenerate(g *engine.Git, s *engine.Summarizer, asJSON bool) {
 }
 
 func printHelp() {
-	fmt.Printf(`git-dikogit %s — Fully automated Git commit & push
+	fmt.Printf(`git-dikotgit %s — Fully automated Git commit & push
 
 USAGE:
-  git dikogit                    Stage all, commit with auto-generated summary, and push
-  git dikogit generate           Print commit summary for staged changes (no commit)
-  git dikogit generate --json    Same as above, in JSON format
-  git dikogit --version          Print version
+  git dikotgit                    Stage all, commit with auto-generated summary, and push
+  git dikotgit generate           Print commit summary for staged changes (no commit)
+  git dikotgit generate --json    Same as above, in JSON format
+  git dikotgit --version          Print version
 
 EXAMPLES:
-  git dikogit                    # full automation: add → commit → push
+  git dikotgit                    # full automation: add → commit → push
   git add .
-  git dikogit generate           # preview the commit message
-  git commit -m "$(git dikogit generate)"
+  git dikotgit generate           # preview the commit message
+  git commit -m "$(git dikotgit generate)"
 `, engine.Version)
 }
 

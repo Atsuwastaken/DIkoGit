@@ -11,26 +11,26 @@ class Dikogit < Formula
   def install
     system "go", "build",
            "-ldflags", "-s -w",
-           "-o", bin/"git-dikogit",
+           "-o", bin/"git-dikotgit",
            "./cmd/git-dikogit"
-    bin.install_symlink bin/"git-dikogit" => "dikogit"
+    bin.install_symlink bin/"git-dikotgit" => "dikotgit"
   end
 
   def caveats
     <<~EOS
       Usage:
         Fully automated: stage all, commit with summary, and push:
-          git dikogit
+          git dikotgit
 
         Generate a summary for staged changes without committing:
-          git dikogit generate
+          git dikotgit generate
 
         JSON output for scripting:
-          git dikogit generate --json
+          git dikotgit generate --json
     EOS
   end
 
   test do
-    assert_match "git-dikogit 2.0.0", shell_output("#{bin}/git-dikogit --version")
+    assert_match "git-dikotgit 2.0.0", shell_output("#{bin}/git-dikotgit --version")
   end
 end
