@@ -15,9 +15,9 @@
 
 ---
 
-## Installation via Homebrew (Recommended)
+## Installation
 
-Install `dikogit` globally on macOS:
+Install `dikogit` globally on macOS via Homebrew:
 
 ```bash
 # 1. Tap the custom Homebrew repository
@@ -96,10 +96,10 @@ To distribute `dikogit` via Homebrew:
    - Copy [`Formula/dikogit.rb`](file:///Users/atsu/DikoGit/Formula/dikogit.rb) into the `Formula/` directory of your `homebrew-dikogit` repository.
 
 3. **Tag a Release in `DIkoGit`**:
-   - Create a release tag (e.g. `v1.0.0`).
+   - Create a release tag (e.g. `v1.1.0`).
    - Calculate checksum:
      ```bash
-     curl -sL https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v1.0.0.tar.gz | shasum -256
+     curl -sL https://github.com/Atsuwastaken/DIkoGit/archive/refs/tags/v1.1.0.tar.gz | shasum -256
      ```
    - Update `url` and `sha256` in `Formula/dikogit.rb`.
 
@@ -108,26 +108,6 @@ To distribute `dikogit` via Homebrew:
    brew tap Atsuwastaken/dikogit
    brew install dikogit
    ```
-
----
-
-## Local Development Installation
-
-If you prefer installing without Homebrew during local development:
-
-```bash
-./install.sh
-```
-
-Ensure `~/.local/bin` is in your `$PATH`:
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-To remove the local symlink:
-```bash
-./uninstall.sh
-```
 
 ---
 
